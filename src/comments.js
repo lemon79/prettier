@@ -6,10 +6,12 @@ var n = types.namedTypes;
 var isArray = types.builtInTypes.array;
 var isObject = types.builtInTypes.object;
 var docBuilders = require("./doc-builders");
+var fromString = docBuilders.fromString;
 var concat = docBuilders.concat;
 var hardline = docBuilders.hardline;
 var breakParent = docBuilders.breakParent;
 var indent = docBuilders.indent;
+var align = docBuilders.align;
 var lineSuffix = docBuilders.lineSuffix;
 var join = docBuilders.join;
 var util = require("./util");
@@ -124,7 +126,7 @@ function decorateComment(node, comment, text) {
   }
 }
 
-function attach(comments, ast, text) {
+function attach(comments, ast, text, options) {
   if (!isArray.check(comments)) {
     return;
   }
@@ -143,7 +145,7 @@ function attach(comments, ast, text) {
     if (util.hasNewline(text, locStart(comment), { backwards: true })) {
       // If a comment exists on its own line, prefer a leading comment.
       // We also need to check if it's the first line of the file.
-      if (
+      if ( 
         handleLastFunctionArgComments(
           text,
           precedingNode,
@@ -176,7 +178,8 @@ function attach(comments, ast, text) {
           precedingNode,
           comment
         ) ||
-        handleAssignmentPatternComments(enclosingNode, comment)
+        handleAssignmentPatternComments(enclosingNode, comment) ||
+		handleStaticExpressionComments(enclosingNode, followingNode, comment) 
       ) {
         // We're good
       } else if (followingNode) {
@@ -192,6 +195,7 @@ function attach(comments, ast, text) {
       }
     } else if (util.hasNewline(text, locEnd(comment))) {
       if (
+
         handleConditionalExpressionComments(
           enclosingNode,
           precedingNode,
@@ -212,6 +216,7 @@ function attach(comments, ast, text) {
         handleLabeledStatementComments(enclosingNode, comment) ||
         handleCallExpressionComments(precedingNode, enclosingNode, comment) ||
         handlePropertyComments(enclosingNode, comment) ||
+		handleStaticExpressionComments(enclosingNode, followingNode, comment) ||
         handleExportNamedDeclarationComments(enclosingNode, comment) ||
         handleOnlyComments(enclosingNode, ast, comment, isLastComment) ||
         handleClassMethodComments(enclosingNode, comment) ||
@@ -456,6 +461,18 @@ function handleMemberExpressionComments(enclosingNode, followingNode, comment) {
     followingNode.type === "Identifier"
   ) {
     addLeadingComment(enclosingNode, comment);
+    return true;
+  }
+
+  return false;
+}
+
+function handleStaticExpressionComments(enclosingNode, followingNode, comment) {
+  if (
+    enclosingNode &&
+    enclosingNode.static === true
+  ) {
+	addLeadingComment(enclosingNode, comment);
     return true;
   }
 
@@ -808,6 +825,7 @@ function getQuasiRange(expr) {
 function printLeadingComment(commentPath, print, options) {
   const comment = commentPath.getValue();
   const contents = printComment(commentPath);
+  const text = options.originalText;
   const isBlock = comment.type === "Block" || comment.type === "CommentBlock";
 
   // Leading block comments should see if they need to stay on the
@@ -822,7 +840,7 @@ function printLeadingComment(commentPath, print, options) {
   return concat([contents, hardline]);
 }
 
-function printTrailingComment(commentPath, print, options) {
+function printTrailingComment(commentPath, print, options, parentNode) {
   const comment = commentPath.getValue();
   const contents = printComment(commentPath);
   const isBlock = comment.type === "Block" || comment.type === "CommentBlock";
@@ -861,6 +879,7 @@ function printTrailingComment(commentPath, print, options) {
 }
 
 function printDanglingComments(path, options, sameIndent) {
+  const text = options.originalText;
   const parts = [];
   const node = path.getValue();
 
@@ -905,7 +924,7 @@ function printComments(path, print, options, needsSemi) {
 
     if (leading) {
       leadingParts.push(printLeadingComment(commentPath, print, options));
-
+	 
       const text = options.originalText;
       if (util.hasNewline(text, util.skipNewline(text, util.locEnd(comment)))) {
         leadingParts.push(hardline);
