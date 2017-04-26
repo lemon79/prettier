@@ -1069,6 +1069,48 @@ function inlineComment() {
 
 `;
 
+exports[`static-expression.js 1`] = `
+class A {
+  static 
+  //comment
+  a() {}
+}
+
+class A {
+  static //comment
+  a() {} 
+}
+
+class A {
+  static a() {} //comment
+}
+
+class A {
+  //comment
+  static a() {} 
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class A {
+  //comment
+  static a() {}
+}
+
+class A {
+  //comment
+  static a() {}
+}
+
+class A {
+  static a() {} //comment
+}
+
+class A {
+  //comment
+  static a() {}
+}
+
+`;
+
 exports[`switch.js 1`] = `
 switch (node && node.type) {
   case "Property":
